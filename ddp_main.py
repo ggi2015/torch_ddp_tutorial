@@ -15,6 +15,8 @@ import random
 import numpy as np
 import torch.backends.cudnn as cudnn
 
+from net import ToyModel
+
 def init_seeds(seed=0, cuda_deterministic=True):
     random.seed(seed)
     np.random.seed(seed)
@@ -27,25 +29,6 @@ def init_seeds(seed=0, cuda_deterministic=True):
         cudnn.deterministic = False
         cudnn.benchmark = True
 
-### 1. 基础模块 ### 
-# 假设我们的模型是这个，与DDP无关
-class ToyModel(nn.Module):
-    def __init__(self):
-        super(ToyModel, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
 
 # 来源：https://github.com/huggingface/transformers/blob/447808c85f0e6d6b0aeeb07214942bf1e578f9d2/src/transformers/trainer_pt_utils.py
 class SequentialDistributedSampler(torch.utils.data.sampler.Sampler):
@@ -204,8 +187,3 @@ for epoch in iterator:
         my_evaluate_func(predictions, labels)
 
 
-################
-## Bash运行
-# DDP: 使用torch.distributed.launch启动DDP模式
-# 使用CUDA_VISIBLE_DEVICES，来决定使用哪些GPU
-# CUDA_VISIBLE_DEVICES="0,1" python -m torch.distributed.launch --nproc_per_node 2 main.py
